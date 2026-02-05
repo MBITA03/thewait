@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Wait</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Playfair+Display:wght@700&display=swap');
+        
+        :root {
+            --neon-pink: #ff00aa;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .title-font {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .timer-digit {
+            font-size: clamp(2.1rem, 7vw, 3.8rem);
+            font-weight: 900;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 20px var(--neon-pink),
+                         0 0 40px var(--neon-pink);
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+            animation: confetti-fall 4s linear forwards;
+        }
+
+        @keyframes confetti-fall {
+            to {
+                transform: translateY(120vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .modal {
+            animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.7) translateY(30px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .heartbeat {
+            animation: heartbeat 1.5s infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50%      { transform: scale(1.14); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .timer-digit { font-size: clamp(1.8rem, 9vw, 2.8rem); }
+            h1.title-font { font-size: clamp(3.2rem, 12vw, 4.8rem); }
+            .status-text { font-size: 0.875rem; padding: 0.5rem 1rem; }
+            .action-btn { padding: 1.5rem 3rem; font-size: 1.5rem; }
+            #question-section p { font-size: 1.5rem; }
+        }
+
+        @media (max-width: 480px) {
+            .action-btn { 
+                padding: 1.25rem 2.5rem; 
+                font-size: 1.35rem; 
+                min-width: 140px;
+            }
+            .modal-inner { padding: 1.5rem !important; }
+            .modal h2 { font-size: 1.8rem !important; }
+            #success-modal .text-6xl { font-size: 3.5rem !important; }
+            #final-time { font-size: 1.25rem !important; }
+            #final-time span { font-size: 1.8rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen overflow-x-hidden">
+    <!-- background -->
+    <div class="fixed inset-0 bg-[radial-gradient(at_center,#4b0000_0%,transparent_70%)] opacity-30 pointer-events-none"></div>
+    <div class="fixed inset-0 bg-[url('https://picsum.photos/id/1015/2000/1200')] bg-cover bg-center opacity-10 pointer-events-none"></div>
+
+    <div class="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-12">
+        <!-- header -->
+        <div class="text-center mb-10 sm:mb-14">
+            <div class="flex items-center justify-center gap-2.5 sm:gap-4 mb-3">
+                <i class="fa-solid fa-heart text-pink-500 text-3xl sm:text-5xl heartbeat"></i>
+                <h1 class="title-font text-5xl sm:text-7xl font-black tracking-tighter neon-text">Hey Chalwe!!!</h1>
+                <i class="fa-solid fa-heart text-pink-500 text-3xl sm:text-5xl heartbeat"></i>
+            </div>
+            <p class="text-zinc-400 text-lg sm:text-xl">it's been way too fucking long</p>
+        </div>
+
+        <!-- timer -->
+        <div class="glass rounded-2xl sm:rounded-3xl p-6 sm:p-10 w-full max-w-5xl mb-12 sm:mb-16 shadow-2xl border border-pink-500/30">
+            <div class="text-center mb-6 sm:mb-8">
+                <span id="status" class="status-text inline-block px-4 sm:px-6 py-1.5 sm:py-2 bg-pink-500/10 text-pink-400 text-xs sm:text-sm font-semibold tracking-widest rounded-full border border-pink-500/30">
+                    TIME SINCE YOU SAID "I'LL SEE YOU SOON"
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 sm:gap-6 text-center" id="timer">
+                <!-- populated by JS -->
+            </div>
+        </div>
+
+        <!-- question -->
+        <div id="question-section" class="text-center w-full max-w-xl">
+            <p class="text-2xl sm:text-3xl font-light mb-8 sm:mb-10 tracking-wide">Finally met?</p>
+            <div class="flex flex-col sm:flex-row gap-6 sm:gap-8 justify-center items-center">
+                <button onclick="handleYes()" 
+                        class="group action-btn relative px-12 sm:px-16 py-6 sm:py-8 bg-gradient-to-b from-white to-zinc-100 text-zinc-950 font-black text-2xl sm:text-3xl rounded-2xl sm:rounded-3xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-xl w-4/5 sm:w-auto">
+                    <span class="relative z-10">YES</span>
+                    <div class="absolute inset-0 bg-pink-500 translate-y-full group-active:translate-y-0 transition-transform duration-300"></div>
+                </button>
+                
+                <button onclick="handleNope()" 
+                        class="group action-btn relative px-12 sm:px-16 py-6 sm:py-8 bg-transparent border-4 border-white/40 font-black text-2xl sm:text-3xl rounded-2xl sm:rounded-3xl overflow-hidden transition-all hover:border-white/80 active:scale-95 w-4/5 sm:w-auto">
+                    <span class="relative z-10">NOPE</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- final message -->
+        <div id="final-section" class="hidden text-center">
+            <div class="text-4xl sm:text-5xl font-black text-pink-400 mb-4">FINALLY.</div>
+            <p class="text-xl sm:text-2xl text-zinc-300 mb-8 sm:mb-10">you found her.<br>took you long enough.</p>
+            <button onclick="resetGame()" 
+                    class="text-sm px-6 sm:px-8 py-3 sm:py-4 border border-zinc-700 hover:border-zinc-400 rounded-full transition-colors">
+                    START OVER (for fun)
+            </button>
+        </div>
+
+        <!-- footer -->
+        <div class="absolute bottom-4 sm:bottom-8 left-0 right-0 text-zinc-500 text-xs flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 px-4">
+            <span>started counting: 4 feb 2026 • 16:17:10</span>
+            <span class="hidden sm:inline w-px h-3 bg-zinc-700"></span>
+            <span class="cursor-pointer hover:text-pink-400 transition-colors" onclick="showSecretHint()">secret code somewhere...</span>
+        </div>
+    </div>
+
+    <!-- YES modal -->
+    <div id="yes-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-4">
+        <div class="modal glass modal-inner w-full max-w-md sm:max-w-lg mx-auto rounded-2xl sm:rounded-3xl p-6 sm:p-10 text-center">
+            <h2 class="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8">Are you sure?</h2>
+            <input id="code-input" type="password" 
+                   class="w-full bg-zinc-900 border border-zinc-700 focus:border-pink-500 rounded-2xl px-6 sm:px-8 py-5 sm:py-6 text-xl sm:text-2xl text-center outline-none mb-6 sm:mb-8"
+                   placeholder="••••••••••"
+                   onkeypress="if(event.key === 'Enter') checkCode()">
+            <div class="flex gap-4">
+                <button onclick="hideModals()" 
+                        class="flex-1 py-4 sm:py-6 text-base sm:text-lg font-semibold border border-zinc-600 hover:bg-zinc-900 rounded-2xl transition-colors">
+                    CANCEL
+                </button>
+                <button onclick="checkCode()" 
+                        class="flex-1 py-4 sm:py-6 text-base sm:text-lg font-semibold bg-pink-600 hover:bg-pink-500 rounded-2xl transition-colors">
+                    SUBMIT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUCCESS modal -->
+    <div id="success-modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[60] px-4">
+        <div class="modal text-center max-w-md sm:max-w-lg px-6 sm:px-10">
+            <div class="text-8xl sm:text-[120px] mb-4 sm:mb-6">🎉</div>
+            <h2 class="text-5xl sm:text-6xl font-black text-pink-400 mb-3 sm:mb-4 title-font">FINALLY!!!</h2>
+            <p id="final-time" class="text-lg sm:text-2xl text-zinc-300 mb-8 sm:mb-12"></p>
+            <button onclick="hideSuccessModal()" 
+                    class="px-10 sm:px-16 py-4 sm:py-6 bg-white text-zinc-950 font-bold text-xl sm:text-2xl rounded-3xl hover:scale-105 transition-transform">
+                    KISS HER FOR ME
+            </button>
+        </div>
+    </div>
+
+    <!-- CHEAT modal -->
+    <div id="cheat-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-4">
+        <div class="modal glass modal-inner w-full max-w-xs sm:max-w-sm mx-auto rounded-2xl sm:rounded-3xl p-6 sm:p-10 text-center">
+            <div class="text-6xl sm:text-7xl mb-4 sm:mb-6">😏</div>
+            <h2 class="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4">you're trying to cheat kah?</h2>
+            <p class="text-zinc-400 text-base sm:text-lg mb-6 sm:mb-10">nice try. timer keeps running.</p>
+            <button onclick="hideModals()" 
+                    class="w-full py-4 sm:py-6 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-lg sm:text-xl font-semibold transition-colors">
+                    OKAY FINE
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ──────────────────────────────────────────────
+        // Config & State (unchanged)
+        // ──────────────────────────────────────────────
+        const START_DATE = new Date(2026, 1, 4, 16, 17, 10);
+        const SECRET_CODE = "KissaSins";
+
+        let isStopped = false;
+        let meetingTime = null;
+        let timerInterval = null;
+
+        function formatNumber(num) {
+            return num < 10 ? '0' + num : num;
+        }
+
+        function calculateTime(targetDate = new Date()) {
+            let diffMs = targetDate.getTime() - START_DATE.getTime();
+            if (diffMs < 0) diffMs = 0;
+
+            const totalSeconds = Math.floor(diffMs / 1000);
+            const seconds = totalSeconds % 60;
+            const minutes = Math.floor(totalSeconds / 60) % 60;
+            const hours   = Math.floor(totalSeconds / 3600) % 24;
+            let days = Math.floor(totalSeconds / 86400);
+
+            const years  = Math.floor(days / 365.25);
+            days %= 365.25;
+            const months = Math.floor(days / 30.4375);
+            days = Math.floor(days % 30.4375);
+            const weeks  = Math.floor(days / 7);
+            days %= 7;
+
+            return { years, months, weeks, days, hours, minutes, seconds };
+        }
+
+        function renderTimer(timeObj) {
+            const container = document.getElementById('timer');
+            container.innerHTML = `
+                <div class="flex flex-col items-center"><div class="timer-digit text-pink-400">${timeObj.years}</div><div class="text-xs uppercase tracking-widest text-zinc-500 mt-1">years</div></div>
+                <div class="flex flex-col items-center"><div class="timer-digit text-pink-400">${timeObj.months}</div><div class="text-xs uppercase tracking-widest text-zinc-500 mt-1">months</div></div>
+                <div class="flex flex-col items-center"><div class="timer-digit text-pink-400">${timeObj.weeks}</div><div class="text-xs uppercase tracking-widest text-zinc-500 mt-1">weeks</div></div>
+                <div class="flex flex-col items-center"><div class="timer-digit text-pink-400">${timeObj.days}</div><div class="text-xs uppercase tracking-widest text-zinc-500 mt-1">days</div></div>
+                <div class="flex flex-col items-center"><div class="timer-digit text-pink-400">${formatNumber(timeObj.hours)}</div><div class="text-xs uppercase tracking-widest text-zinc-500 mt-1">hours</div></div>
+                <div class="flex flex-col items-center"><div class="timer-digit text-pink-400">${formatNumber(timeObj.minutes)}</div><div class="text-xs uppercase tracking-widest text-zinc-500 mt-1">minutes</div></div>
+                <div class="flex flex-col items-center"><div class="timer-digit text-pink-400">${formatNumber(timeObj.seconds)}</div><div class="text-xs uppercase tracking-widest text-zinc-500 mt-1">seconds</div></div>
+            `;
+        }
+
+        function startLiveTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!isStopped) {
+                    renderTimer(calculateTime());
+                }
+            }, 1000);
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('kissaMeetingTime');
+            if (saved) {
+                meetingTime = new Date(saved);
+                isStopped = true;
+                document.getElementById('question-section').classList.add('hidden');
+                document.getElementById('final-section').classList.remove('hidden');
+                renderTimer(calculateTime(meetingTime));
+                document.getElementById('status').textContent = "SHE WAS FOUND";
+                document.getElementById('status').classList.add('!bg-emerald-500/10', '!text-emerald-400', '!border-emerald-500/30');
+            } else {
+                isStopped = false;
+                startLiveTimer();
+                renderTimer(calculateTime());
+            }
+        }
+
+        // ──────────────────────────────────────────────
+        // Interaction handlers (unchanged logic)
+        // ──────────────────────────────────────────────
+        function handleYes() {
+            document.getElementById('yes-modal').classList.remove('hidden');
+            document.getElementById('code-input').focus();
+        }
+
+        function hideModals() {
+            document.getElementById('yes-modal').classList.add('hidden');
+            document.getElementById('cheat-modal').classList.add('hidden');
+        }
+
+        function checkCode() {
+            const input = document.getElementById('code-input').value.trim();
+            hideModals();
+            if (input === SECRET_CODE) {
+                isStopped = true;
+                meetingTime = new Date();
+                localStorage.setItem('kissaMeetingTime', meetingTime.toISOString());
+                document.getElementById('question-section').classList.add('hidden');
+                document.getElementById('final-section').classList.remove('hidden');
+                renderTimer(calculateTime(meetingTime));
+                document.getElementById('status').textContent = "MISSION COMPLETE";
+                document.getElementById('status').classList.add('!bg-emerald-500/10', '!text-emerald-400', '!border-emerald-500/30');
+                document.getElementById('success-modal').classList.remove('hidden');
+                document.getElementById('final-time').innerHTML = `
+                    it took her<br>
+                    <span class="text-4xl sm:text-5xl text-white font-black">${calculateTime(meetingTime).years}y ${calculateTime(meetingTime).months}m ${calculateTime(meetingTime).weeks}w ${calculateTime(meetingTime).days}d ${calculateTime(meetingTime).hours}h ${calculateTime(meetingTime).minutes}m ${calculateTime(meetingTime).seconds}s</span>
+                `;
+                launchConfetti();
+            } else {
+                document.getElementById('cheat-modal').classList.remove('hidden');
+            }
+            document.getElementById('code-input').value = '';
+        }
+
+        function hideSuccessModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+        }
+
+        function handleNope() {
+            const messages = [
+                "damn... the wait continues 💔",
+                "she's still out there somewhere...",
+                "keep your eyes open king",
+                "not today huh",
+                "maybe she's married 💔"
+            ];
+            const msg = messages[Math.floor(Math.random() * messages.length)];
+            const notif = document.createElement('div');
+            notif.className = "fixed bottom-8 sm:bottom-10 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 max-w-md mx-auto bg-zinc-900 border border-zinc-700 text-zinc-400 px-6 sm:px-10 py-4 sm:py-6 rounded-2xl sm:rounded-3xl text-base sm:text-xl shadow-2xl z-50 text-center";
+            notif.textContent = msg;
+            document.body.appendChild(notif);
+            setTimeout(() => {
+                notif.style.transition = 'all 0.6s ease';
+                notif.style.opacity = '0';
+                notif.style.transform = 'translateY(20px)';
+                setTimeout(() => notif.remove(), 700);
+            }, 2200);
+        }
+
+        function launchConfetti() {
+            const colors = ['#ff00aa', '#ff66cc', '#ffffff', '#00ffff'];
+            for (let i = 0; i < 140; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.top = '-10px';
+                c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                c.style.width = c.style.height = (Math.random() * 10 + 5) + 'px';
+                c.style.opacity = Math.random() * 0.7 + 0.3;
+                c.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                document.body.appendChild(c);
+                setTimeout(() => c.remove(), 7000);
+            }
+        }
+
+        function resetGame() {
+            if (confirm("Really reset everything?")) {
+                localStorage.removeItem('kissaMeetingTime');
+                location.reload();
+            }
+        }
+
+        function showSecretHint() {
+            alert("Nope!!!!!! 😉");
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === "Escape") {
+                document.querySelectorAll('.fixed.inset-0').forEach(el => el.classList.add('hidden'));
+            }
+        });
+
+        window.onload = loadState;
+    </script>
+</body>
+</html>
